@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ご来場ありがとうございます｜展示のお礼</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg: #FBF6F2;
+    --panel: #FFFFFF;
+    --accent: #C7634F;
+    --text: #222222;
+    --muted: #6F665F;
+    --radius: 14px;
+    --max-width: 720px;
+  }
+  html,body{height:100%;margin:0;}
+  body{
+    font-family:"Noto Sans JP","Yu Gothic","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+    background:linear-gradient(180deg,var(--bg), #fff);
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:20px;
+    box-sizing:border-box;
+  }
+
+  .card{
+    width:100%;
+    max-width:var(--max-width);
+    background:var(--panel);
+    border-radius:var(--radius);
+    padding:18px;
+    box-shadow:0 10px 30px rgba(30,20,10,0.06);
+    box-sizing:border-box;
+  }
+
+  header{display:flex;gap:12px;align-items:flex-start}
+  .logo{
+    width:54px;height:54px;border-radius:10px;
+    background:linear-gradient(135deg,#FFF7F2,#FFF);
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid rgba(0,0,0,0.04);flex:0 0 54px;
+  }
+  .logo svg{width:30px;height:30px;fill:var(--accent)}
+  h1{margin:0;font-size:18px;color:var(--accent);line-height:1.15;font-weight:700}
+  p.lead{margin:8px 0 12px 0;font-size:14px;color:var(--text)}
+
+  .info{
+    font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:14px;
+  }
+
+  /* Always vertical stack buttons */
+  .actions{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    margin-top:6px;
+  }
+  .btn{
+    display:block;padding:14px;border-radius:12px;text-align:center;
+    font-weight:700;font-size:15px;text-decoration:none;color:#fff;background:var(--accent);
+    box-shadow:0 8px 20px rgba(197,99,79,0.12);border:0;
+  }
+  .btn.secondary{
+    background:transparent;color:var(--accent);border:1px solid rgba(197,101,79,0.14);
+    box-shadow:none;font-weight:700;
+  }
+
+  .thank{margin-top:14px;font-size:13px;color:var(--muted);text-align:center}
+
+  footer{margin-top:16px;text-align:center;color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+  <main class="card" role="main" aria-labelledby="title">
+    <header>
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2L3 7v9c0 1.1.9 2 2 2h3v-6h6v6h3c1.1 0 2-.9 2-2V7l-9-5z"/></svg>
+      </div>
+      <div>
+        <h1 id="title">ご来場ありがとうございます</h1>
+        <p class="lead">本日はお越しいただき、心より感謝申し上げます。下のボタンから展示の画像データをダウンロード／アンケートにお進みください。</p>
+      </div>
+    </header>
+
+    <div class="info" role="note">
+      <strong>使い方</strong><br>
+      ①「作品画像データ」をタップすると、展示作品の画像フォルダが開きます。<br>
+      ②「アンケートに回答する」は所要1〜2分です。ご感想をお聞かせください。
+    </div>
+
+    <section class="actions" aria-label="主要アクション">
+      <!-- ここを実際のリンクに置き換えてください -->
+      <a id="drive-link" class="btn" href="https://drive.google.com/drive/folders/1F55MdxEi_-LPK6TXrhbeHH8F56azBPz4?usp=sharing" target="_blank" rel="noopener noreferrer">▶ 作品画像データをダウンロード</a>
+      <a id="form-link" class="btn secondary" href="https://forms.gle/ZL8J9ABdgxBJLFd18" target="_blank" rel="noopener noreferrer">▶ アンケートに回答する（所要1〜2分）</a>
+    </section>
+
+    <p class="thank">作品をお楽しみいただけたなら、ぜひご感想をお聞かせください。いただいたご意見は今後の展示に活かします。</p>
+
+    <footer>— 本展（ご来場に心より感謝いたします）</footer>
+  </main>
+</body>
+</html>
