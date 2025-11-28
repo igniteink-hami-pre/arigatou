@@ -119,7 +119,7 @@
     <div class="pw-box" role="document">
       <h2 id="pwTitle">パスワードを入力してください</h2>
       <div class="pw-desc">本画面を表示するにはパスワードが必要です。</div>
-      <input id="pwInput" class="pw-input" type="password" inputmode="numeric" autocomplete="off" placeholder="パスワード" aria-label="パスワード入力">
+      <input id="pwInput" class="pw-input" type="password" inputmode="text" autocomplete="off" placeholder="パスワード" aria-label="パスワード入力">
       <div class="pw-actions">
         <button id="pwSubmit" class="pw-btn primary">開く</button>
         <button id="pwClear" class="pw-btn secondary" type="button">クリア</button>
@@ -159,13 +159,58 @@
 
 <script>
 /*
-  簡単なクライアント側パスワードロック
-  - 使い方: 下の PASSWORD に好きなパスワードを入れてください（クライアント側の簡易保護）
-  - セキュリティ: ブラウザのソースを見ればパスワードがわかるため、重要なデータを守る場合はサーバ側認証を推奨します。
+  PBKDF2 照合（クライアント側に埋め込んだ salt と 派生キーを使います）
+  - パスワードを直接ファイルに置かず、派生した値で照合することで
+    平文を直接書くより分かりづらくします（ただしソースを見られると salt と派生キーは見えます）。
+  - もし本当に高い安全性が必要なら、サーバー側で認証してください。
 */
-(function(){
-  const PASSWORD = 'exhibit2025'; // ←ここにパスワードを設定してください（簡易実装）
-  // --- UI 要素 ---
+
+(async () => {
+  // --- 埋め込まれた値（ここを差し替えました） ---
+  const STORED = {
+    saltBase64: "17BCHGOIa/zziJ+99BcRkQ==",
+    iterations: 150000,
+    derivedKeyBase64: "KhKERIOv8+PcuDzSx2ynWt3iyHDBjQaadCKX1XawFyk="
+  };
+  // -----------------------------------------------
+
+  const utf8 = (s) => new TextEncoder().encode(s);
+  const toBase64 = (u8) => {
+    let s = "";
+    for (let i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
+    return btoa(s);
+  };
+  const fromBase64ToUint8 = (b64) => {
+    const s = atob(b64);
+    const u8 = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) u8[i] = s.charCodeAt(i);
+    return u8;
+  };
+  const constTimeEqual = (a, b) => {
+    if (a.length !== b.length) return false;
+    let diff = 0;
+    for (let i = 0; i < a.length; i++) diff |= (a[i] ^ b[i]);
+    return diff === 0;
+  };
+
+  async function deriveKeyPBKDF2(password, saltBase64, iterations) {
+    const salt = fromBase64ToUint8(saltBase64);
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw", utf8(password), { name: "PBKDF2" }, false, ["deriveBits"]
+    );
+    const derivedBits = await crypto.subtle.deriveBits(
+      {
+        name: "PBKDF2",
+        salt: salt,
+        iterations: iterations,
+        hash: "SHA-256"
+      },
+      keyMaterial,
+      256
+    );
+    return new Uint8Array(derivedBits);
+  }
+
   const overlay = document.getElementById('pwOverlay');
   const input = document.getElementById('pwInput');
   const submit = document.getElementById('pwSubmit');
@@ -173,59 +218,47 @@
   const errorEl = document.getElementById('pwError');
   const main = document.getElementById('mainContent');
 
-  // Enter で送信
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { tryUnlock(); }
-  });
-  submit.addEventListener('click', tryUnlock);
-  clearBtn.addEventListener('click', () => {
-    input.value = '';
-    input.focus();
-    errorEl.textContent = '';
-  });
-
-  // パスワード検証
-  function tryUnlock(){
-    const v = input.value || '';
+  async function tryUnlock() {
+    const v = (input.value || '').trim();
     if (!v) { errorEl.textContent = 'パスワードを入力してください'; input.focus(); return; }
-    if (v === PASSWORD) {
-      unlock();
-    } else {
-      // 誤入力時のメッセージ（任意で試行回数制限などを入れられます）
-      errorEl.textContent = 'パスワードが違います';
-      input.value = '';
-      input.focus();
+    try {
+      const derived = await deriveKeyPBKDF2(v, STORED.saltBase64, STORED.iterations);
+      const stored = fromBase64ToUint8(STORED.derivedKeyBase64);
+      if (constTimeEqual(derived, stored)) {
+        unlock();
+      } else {
+        errorEl.textContent = 'パスワードが違います';
+        input.value = '';
+        input.focus();
+      }
+    } catch (e) {
+      console.error(e);
+      errorEl.textContent = '検証中にエラーが発生しました';
     }
   }
 
-  function unlock(){
-    // オーバーレイをフェードアウトして本体を操作可能にする
-    overlay.style.transition = 'opacity 250ms ease';
+  function unlock() {
+    overlay.style.transition = 'opacity 200ms ease';
     overlay.style.opacity = '0';
-    setTimeout(() => { overlay.remove(); }, 300);
+    setTimeout(() => { overlay.remove(); }, 250);
     document.body.classList.remove('locked');
     main.removeAttribute('aria-hidden');
-    // フォーカスを主要ボタンへ
     const firstBtn = document.querySelector('.actions .btn');
     if (firstBtn) firstBtn.focus();
   }
 
-  // 初回フォーカス
-  window.addEventListener('load', () => {
-    input.focus();
-  });
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
+  submit.addEventListener('click', tryUnlock);
+  clearBtn.addEventListener('click', () => { input.value=''; errorEl.textContent=''; input.focus(); });
 
-  // もし localStorage に鍵を保存しておきたい場合（任意）————
-  // ここはコメントアウト。必要なら有効化して使ってください。
-  /*
-  const LS_KEY = 'exhibit-unlocked';
-  if (localStorage.getItem(LS_KEY) === '1') {
-    // 既に解除済み
-    unlock();
-  } else {
-    // 成功したら localStorage.setItem(LS_KEY, '1');
-  }
-  */
+  window.addEventListener('load', () => { input.focus(); });
+
+  // テスト用ヘルパー（デバッグ目的。実運用では不要）
+  window._pw_debug = {
+    saltBase64: STORED.saltBase64,
+    derivedKeyBase64: STORED.derivedKeyBase64,
+    iterations: STORED.iterations
+  };
 })();
 </script>
 </body>
