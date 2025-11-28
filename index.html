@@ -75,10 +75,61 @@
   .thank{margin-top:14px;font-size:13px;color:var(--muted);text-align:center}
 
   footer{margin-top:16px;text-align:center;color:var(--muted);font-size:12px}
+
+  /* --- password overlay styles --- */
+  .pw-overlay{
+    position:fixed;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.55));
+    z-index:9999;
+    padding:24px;
+    box-sizing:border-box;
+  }
+  .pw-box{
+    width:100%;
+    max-width:420px;
+    background:#fff;
+    border-radius:14px;
+    padding:18px;
+    box-sizing:border-box;
+    box-shadow:0 20px 40px rgba(0,0,0,0.25);
+    text-align:center;
+  }
+  .pw-box h2{margin:0 0 10px 0;font-size:18px;color:var(--accent)}
+  .pw-desc{font-size:13px;color:var(--muted);margin-bottom:14px}
+  .pw-input{
+    width:100%;padding:12px 14px;border-radius:10px;border:1px solid #e6e2df;
+    font-size:16px;box-sizing:border-box;margin-bottom:12px;
+  }
+  .pw-actions{display:flex;gap:8px;justify-content:center}
+  .pw-btn{flex:1;padding:12px;border-radius:10px;border:0;font-weight:700}
+  .pw-btn.primary{background:var(--accent);color:#fff}
+  .pw-btn.secondary{background:#f3f0ee;color:var(--accent);border:1px solid rgba(197,101,79,0.08)}
+  .pw-error{color:#b00020;font-size:13px;margin-top:8px;min-height:18px}
+  /* prevent focus on background while locked */
+  body.locked *:not(.pw-overlay):not(.pw-overlay *){pointer-events:none;user-select:none}
 </style>
 </head>
-<body>
-  <main class="card" role="main" aria-labelledby="title">
+<body class="locked">
+  <!-- Password overlay (表示：ページ読み込み時に先に出す) -->
+  <div id="pwOverlay" class="pw-overlay" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
+    <div class="pw-box" role="document">
+      <h2 id="pwTitle">パスワードを入力してください</h2>
+      <div class="pw-desc">本画面を表示するにはパスワードが必要です。</div>
+      <input id="pwInput" class="pw-input" type="password" inputmode="numeric" autocomplete="off" placeholder="パスワード" aria-label="パスワード入力">
+      <div class="pw-actions">
+        <button id="pwSubmit" class="pw-btn primary">開く</button>
+        <button id="pwClear" class="pw-btn secondary" type="button">クリア</button>
+      </div>
+      <div id="pwError" class="pw-error" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <!-- 元ページのメイン（ロック解除まで操作不可） -->
+  <main id="mainContent" class="card" role="main" aria-labelledby="title" aria-hidden="true">
     <header>
       <div class="logo" aria-hidden="true">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2L3 7v9c0 1.1.9 2 2 2h3v-6h6v6h3c1.1 0 2-.9 2-2V7l-9-5z"/></svg>
@@ -105,5 +156,77 @@
 
     <footer>— 本展（ご来場に心より感謝いたします）</footer>
   </main>
+
+<script>
+/*
+  簡単なクライアント側パスワードロック
+  - 使い方: 下の PASSWORD に好きなパスワードを入れてください（クライアント側の簡易保護）
+  - セキュリティ: ブラウザのソースを見ればパスワードがわかるため、重要なデータを守る場合はサーバ側認証を推奨します。
+*/
+(function(){
+  const PASSWORD = 'exhibit2025'; // ←ここにパスワードを設定してください（簡易実装）
+  // --- UI 要素 ---
+  const overlay = document.getElementById('pwOverlay');
+  const input = document.getElementById('pwInput');
+  const submit = document.getElementById('pwSubmit');
+  const clearBtn = document.getElementById('pwClear');
+  const errorEl = document.getElementById('pwError');
+  const main = document.getElementById('mainContent');
+
+  // Enter で送信
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { tryUnlock(); }
+  });
+  submit.addEventListener('click', tryUnlock);
+  clearBtn.addEventListener('click', () => {
+    input.value = '';
+    input.focus();
+    errorEl.textContent = '';
+  });
+
+  // パスワード検証
+  function tryUnlock(){
+    const v = input.value || '';
+    if (!v) { errorEl.textContent = 'パスワードを入力してください'; input.focus(); return; }
+    if (v === PASSWORD) {
+      unlock();
+    } else {
+      // 誤入力時のメッセージ（任意で試行回数制限などを入れられます）
+      errorEl.textContent = 'パスワードが違います';
+      input.value = '';
+      input.focus();
+    }
+  }
+
+  function unlock(){
+    // オーバーレイをフェードアウトして本体を操作可能にする
+    overlay.style.transition = 'opacity 250ms ease';
+    overlay.style.opacity = '0';
+    setTimeout(() => { overlay.remove(); }, 300);
+    document.body.classList.remove('locked');
+    main.removeAttribute('aria-hidden');
+    // フォーカスを主要ボタンへ
+    const firstBtn = document.querySelector('.actions .btn');
+    if (firstBtn) firstBtn.focus();
+  }
+
+  // 初回フォーカス
+  window.addEventListener('load', () => {
+    input.focus();
+  });
+
+  // もし localStorage に鍵を保存しておきたい場合（任意）————
+  // ここはコメントアウト。必要なら有効化して使ってください。
+  /*
+  const LS_KEY = 'exhibit-unlocked';
+  if (localStorage.getItem(LS_KEY) === '1') {
+    // 既に解除済み
+    unlock();
+  } else {
+    // 成功したら localStorage.setItem(LS_KEY, '1');
+  }
+  */
+})();
+</script>
 </body>
 </html>
